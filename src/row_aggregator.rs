@@ -18,15 +18,10 @@ impl CellAccumulator {
 
 pub struct RowAggregator {
     row: Vec<CellAccumulator>,
-    pivot_index: usize,
 }
 
 impl RowAggregator {
-    pub fn new(
-        source: &Vec<CellValue>,
-        pivot_index: &usize,
-        accumulators: &Vec<Accumulator>,
-    ) -> RowAggregator {
+    pub fn new(source: &Vec<CellValue>, accumulators: &Vec<Accumulator>) -> RowAggregator {
         let row = source
             .iter()
             .zip(accumulators.iter())
@@ -35,10 +30,7 @@ impl RowAggregator {
                 accumulator: *acc,
             })
             .collect();
-        RowAggregator {
-            row,
-            pivot_index: *pivot_index,
-        }
+        RowAggregator { row }
     }
 
     pub fn accumulate(&self, values: &Vec<CellValue>) -> RowAggregator {
@@ -47,14 +39,7 @@ impl RowAggregator {
         for (i, new_cell) in values.iter().enumerate() {
             row.push(self.row[i].accumulate(&new_cell));
         }
-        RowAggregator {
-            row,
-            pivot_index: self.pivot_index,
-        }
-    }
-
-    pub fn includes_row(&self, row: &Vec<CellValue>) -> bool {
-        self.row[self.pivot_index].value.cmp(&row[self.pivot_index]) == Ordering::Equal
+        RowAggregator { row }
     }
 
     pub fn to_row(&self) -> Vec<CellValue> {

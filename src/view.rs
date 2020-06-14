@@ -1,9 +1,11 @@
+use itertools::Itertools;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 
 use super::cell_value::{Accumulator, CellValue};
 use super::config::{Config, SortDescriptor, SortOrder};
+use super::macros;
 use super::row_aggregator::RowAggregator;
 use super::table::Table;
 
@@ -73,25 +75,34 @@ fn sort_table(table: &mut Table, sort: &Vec<SortDescriptor>) {
 }
 
 fn pivot_table(table: &mut Table, pivot_index: &usize, accumulators: &Vec<Accumulator>) -> Table {
-    // sort by aggregate value
+    // sort by aggregate value (iter-tools group by expects a sorted collection)
     table
         .data
         .sort_by(|a, b| a[*pivot_index].cmp(&b[*pivot_index]));
 
-    // iterate over the table, aggregating cell values
-    let mut aggregate_table: Vec<Vec<CellValue>> = vec![];
-    let mut aggregate = RowAggregator::new(&table.data[0], &pivot_index, &accumulators);
-    let mut total = RowAggregator::new(&table.data[0], &pivot_index, &accumulators);
-    for row in table.data.iter().skip(1) {
-        if aggregate.includes_row(&row) {
-            aggregate = aggregate.accumulate(&row);
-        } else {
-            aggregate_table.push(aggregate.to_row());
-            aggregate = RowAggregator::new(row, &pivot_index, &accumulators);
-        }
-        total = total.accumulate(&row);
-    }
-    aggregate_table.push(aggregate.to_row());
+    let data = &table.data;
+    let groups = data.into_iter().group_by(|a| a[*pivot_index].clone());
+
+    // aggregate over eeach group
+    let mut aggregate_table: Vec<Vec<CellValue>> = groups
+        .into_iter()
+        .map(|(_, group)| {
+            let materialised = group.collect::<Vec<&Vec<CellValue>>>();
+            let agg = materialised.iter().skip(1).fold(
+                RowAggregator::new(&materialised[0], &accumulators),
+                |acc, row| acc.accumulate(&row),
+            );
+            agg.to_row()
+        })
+        .collect();
+
+    // create the total for this group
+    let total_acc: Vec<Accumulator> = accumulators.iter().map(|s| s.total_accumulator()).collect();
+    let total = aggregate_table.iter().skip(1).fold(
+        RowAggregator::new(&aggregate_table[0], &total_acc),
+        |acc, row| acc.accumulate(&row),
+    );
+    // add to the head of the table
     aggregate_table.insert(0, total.to_row());
 
     Table {

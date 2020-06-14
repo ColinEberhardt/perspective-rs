@@ -1,5 +1,5 @@
 import Table from "./table";
-// import {schema, data} from "./olympics";
+import {schema, data} from "./olympics";
 
 
 const stuff = [
@@ -34,8 +34,8 @@ viewer.toggleConfig();
 viewer.load(table);
 
 // const worker = perspective.worker();
-// const table = worker.table(stuff_schema);
-// table.update(stuff);
+// const table = worker.table(schema);
+// table.update(data);
 
 // const view_handler = {
 //   get: function (target, prop, receiver) {
@@ -74,6 +74,7 @@ viewer.load(table);
 //   }
 // };
 
-// const table_proxy = new Proxy(table2, table_handler);
+// viewer.toggleConfig();
+// viewer.load(table);
 
 

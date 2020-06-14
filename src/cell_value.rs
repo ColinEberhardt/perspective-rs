@@ -1,6 +1,6 @@
 use serde::ser::{Serialize, Serializer};
 use serde_json::Value;
-use std::cmp::{Eq, Ordering, min, max};
+use std::cmp::{max, min, Eq, Ordering};
 
 use super::config::Aggregate;
 
@@ -28,6 +28,16 @@ impl Accumulator {
             Aggregate::Count => Accumulator::Count,
             Aggregate::Low => Accumulator::Low,
             Aggregate::High => Accumulator::High,
+        }
+    }
+
+    pub fn total_accumulator(&self) -> Accumulator {
+        match self {
+            Accumulator::Sum => Accumulator::Sum,
+            Accumulator::Count => Accumulator::Sum,
+            Accumulator::Low => Accumulator::Low,
+            Accumulator::High => Accumulator::High,
+            Accumulator::Noop => Accumulator::Noop,
         }
     }
 }

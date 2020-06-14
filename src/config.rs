@@ -35,5 +35,5 @@ pub enum Aggregate {
     Sum,
     Count,
     Low,
-    High
+    High,
 }
