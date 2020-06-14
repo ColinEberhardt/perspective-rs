@@ -1,11 +1,11 @@
 use itertools::Itertools;
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::iter;
 use wasm_bindgen::prelude::*;
 
 use super::cell_value::{Accumulator, CellValue};
 use super::config::{Config, SortDescriptor, SortOrder};
-use super::macros;
 use super::row_aggregator::RowAggregator;
 use super::table::Table;
 
@@ -74,7 +74,41 @@ fn sort_table(table: &mut Table, sort: &Vec<SortDescriptor>) {
         .sort_by(|a, b| compare(&a, &b, &indexed_sort_descriptors));
 }
 
-fn pivot_table(table: &mut Table, pivot_index: &usize, accumulators: &Vec<Accumulator>) -> Table {
+// represents an aggregate over a collection of rows, each sharing the same key
+struct TableGroupRow {
+    values: Vec<CellValue>,
+    key: CellValue,
+}
+
+struct TableGroup {
+    groups: Vec<TableGroupRow>,
+    total: Vec<CellValue>,
+    columns: Vec<String>,
+}
+
+impl TableGroup {
+    fn to_table(&self) -> Table {
+        // create a table, appending the total as the first row
+        Table {
+            data: iter::once(self.total.clone())
+                .chain(self.groups.iter().map(|g| g.values.clone()))
+                .collect(),
+            columns: self.columns.clone(),
+        }
+    }
+
+    fn row_paths(&self) -> Vec<CellValue> {
+        iter::once(CellValue::Null)
+            .chain(self.groups.iter().map(|g| g.key.clone()))
+            .collect()
+    }
+}
+
+fn pivot_table(
+    table: &mut Table,
+    pivot_index: &usize,
+    accumulators: &Vec<Accumulator>,
+) -> TableGroup {
     // sort by aggregate value (iter-tools group by expects a sorted collection)
     table
         .data
@@ -83,31 +117,31 @@ fn pivot_table(table: &mut Table, pivot_index: &usize, accumulators: &Vec<Accumu
     let data = &table.data;
     let groups = data.into_iter().group_by(|a| a[*pivot_index].clone());
 
-    // aggregate over eeach group
-    let mut aggregate_table: Vec<Vec<CellValue>> = groups
+    // aggregate over each group
+    let aggregate_table: Vec<TableGroupRow> = groups
         .into_iter()
-        .map(|(_, group)| {
+        .map(|(key, group)| {
             let materialised = group.collect::<Vec<&Vec<CellValue>>>();
             let agg = materialised.iter().skip(1).fold(
                 RowAggregator::new(&materialised[0], &accumulators),
                 |acc, row| acc.accumulate(&row),
             );
-            agg.to_row()
+            let values = agg.to_row();
+            TableGroupRow { key, values }
         })
         .collect();
 
     // create the total for this group
     let total_acc: Vec<Accumulator> = accumulators.iter().map(|s| s.total_accumulator()).collect();
     let total = aggregate_table.iter().skip(1).fold(
-        RowAggregator::new(&aggregate_table[0], &total_acc),
-        |acc, row| acc.accumulate(&row),
+        RowAggregator::new(&aggregate_table[0].values, &total_acc),
+        |acc, group| acc.accumulate(&group.values),
     );
-    // add to the head of the table
-    aggregate_table.insert(0, total.to_row());
 
-    Table {
+    TableGroup {
+        total: total.to_row(),
+        groups: aggregate_table,
         columns: table.columns.clone(),
-        data: aggregate_table,
     }
 }
 
@@ -131,24 +165,12 @@ impl View {
                 }
             }
 
-            let mut ag_table = pivot_table(table, &pivot_index, &accumulators);
+            let ag_table = pivot_table(table, &pivot_index, &accumulators);
 
-            sort_table(&mut ag_table, &config.sort);
+            // sort_table(&mut ag_table, &config.sort);
 
-            let mut columns = table_to_columns(&config.columns, &ag_table);
-
-            // add the 'special' row paths column
-            let mut row_paths: Vec<CellValue> = Vec::new();
-            for row_index in 0..ag_table.data.len() {
-                if row_index == 0 {
-                    // the totals row requires a null value
-                    row_paths.push(CellValue::Null);
-                } else {
-                    let row_path = ag_table.data[row_index][pivot_index].clone();
-                    row_paths.push(row_path);
-                }
-            }
-            columns.insert("__ROW_PATH__".to_string(), row_paths);
+            let mut columns = table_to_columns(&config.columns, &ag_table.to_table());
+            columns.insert("__ROW_PATH__".to_string(), ag_table.row_paths());
 
             return View {
                 columns,

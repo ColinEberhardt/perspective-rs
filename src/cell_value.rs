@@ -68,7 +68,6 @@ impl CellValue {
             (Noop, Integer(value)) => Integer(*value),
             (Noop, Str(value)) => Str(value.clone()),
             (Noop, Null) => Null,
-            _ => Null,
         }
     }
 
