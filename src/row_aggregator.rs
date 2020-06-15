@@ -1,5 +1,8 @@
-
 use super::cell_value::{Accumulator, CellValue};
+
+pub struct RowAggregator {
+    row: Vec<CellAccumulator>,
+}
 
 struct CellAccumulator {
     value: CellValue,
@@ -13,10 +16,6 @@ impl CellAccumulator {
             accumulator: self.accumulator.clone(),
         }
     }
-}
-
-pub struct RowAggregator {
-    row: Vec<CellAccumulator>,
 }
 
 impl RowAggregator {

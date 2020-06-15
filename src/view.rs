@@ -1,12 +1,10 @@
-use itertools::Itertools;
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::iter;
 use wasm_bindgen::prelude::*;
 
 use super::cell_value::{Accumulator, CellValue};
 use super::config::{Config, SortDescriptor, SortOrder};
-use super::row_aggregator::RowAggregator;
+use super::pivot_table::PivotTable;
 use super::table::Table;
 
 #[wasm_bindgen]
@@ -74,77 +72,6 @@ fn sort_table(table: &mut Table, sort: &Vec<SortDescriptor>) {
         .sort_by(|a, b| compare(&a, &b, &indexed_sort_descriptors));
 }
 
-// represents an aggregate over a collection of rows, each sharing the same key
-struct TableGroupRow {
-    values: Vec<CellValue>,
-    key: CellValue,
-}
-
-struct TableGroup {
-    groups: Vec<TableGroupRow>,
-    total: Vec<CellValue>,
-    columns: Vec<String>,
-}
-
-impl TableGroup {
-    fn to_table(&self) -> Table {
-        // create a table, appending the total as the first row
-        Table {
-            data: iter::once(self.total.clone())
-                .chain(self.groups.iter().map(|g| g.values.clone()))
-                .collect(),
-            columns: self.columns.clone(),
-        }
-    }
-
-    fn row_paths(&self) -> Vec<CellValue> {
-        iter::once(CellValue::Null)
-            .chain(self.groups.iter().map(|g| g.key.clone()))
-            .collect()
-    }
-}
-
-fn pivot_table(
-    table: &mut Table,
-    pivot_index: &usize,
-    accumulators: &Vec<Accumulator>,
-) -> TableGroup {
-    // sort by aggregate value (iter-tools group by expects a sorted collection)
-    table
-        .data
-        .sort_by(|a, b| a[*pivot_index].cmp(&b[*pivot_index]));
-
-    let data = &table.data;
-    let groups = data.into_iter().group_by(|a| a[*pivot_index].clone());
-
-    // aggregate over each group
-    let aggregate_table: Vec<TableGroupRow> = groups
-        .into_iter()
-        .map(|(key, group)| {
-            let materialised = group.collect::<Vec<&Vec<CellValue>>>();
-            let agg = materialised.iter().skip(1).fold(
-                RowAggregator::new(&materialised[0], &accumulators),
-                |acc, row| acc.accumulate(&row),
-            );
-            let values = agg.to_row();
-            TableGroupRow { key, values }
-        })
-        .collect();
-
-    // create the total for this group
-    let total_acc: Vec<Accumulator> = accumulators.iter().map(|s| s.total_accumulator()).collect();
-    let total = aggregate_table.iter().skip(1).fold(
-        RowAggregator::new(&aggregate_table[0].values, &total_acc),
-        |acc, group| acc.accumulate(&group.values),
-    );
-
-    TableGroup {
-        total: total.to_row(),
-        groups: aggregate_table,
-        columns: table.columns.clone(),
-    }
-}
-
 #[wasm_bindgen]
 impl View {
     #[wasm_bindgen(skip)]
@@ -165,7 +92,7 @@ impl View {
                 }
             }
 
-            let ag_table = pivot_table(table, &pivot_index, &accumulators);
+            let ag_table = PivotTable::new(table, &pivot_index, &accumulators);
 
             // sort_table(&mut ag_table, &config.sort);
 
