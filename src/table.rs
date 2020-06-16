@@ -2,6 +2,7 @@ use serde_json::Value;
 use wasm_bindgen::prelude::*;
 
 use super::cell_value::CellValue;
+use super::utils::*;
 use super::view::View;
 
 // describes a tabular structure with columns (described by strings)
@@ -38,6 +39,8 @@ impl Table {
 
     #[wasm_bindgen(constructor)]
     pub fn new(json: JsValue) -> Result<Table, JsValue> {
+        set_panic_hook();
+
         let json_value: Value = json
             .into_serde()
             .map_err(|_| JsValue::from("JSON parse error"))?;

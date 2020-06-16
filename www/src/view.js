@@ -31,11 +31,15 @@ export default class View {
     const t0 = performance.now();
     let cols = this._adaptee.to_columns();
     const t1 = performance.now();
-    if (cols.__ROW_PATH__) {
-      cols.__ROW_PATH__ = cols.__ROW_PATH__.map(s => s ? [s] : []);
-    }
+    // if (cols.__ROW_PATH__) {
+    //   cols.__ROW_PATH__ = cols.__ROW_PATH__.map(s => s ? [s] : []);
+    // }
     console.log(`Call to to_columns took ${t1 - t0} milliseconds.`);
-    return Promise.resolve(cols);
+    const ret = {
+      ...cols.columns,
+      __ROW_PATH__: cols.row_paths.map(s => s.values)
+    };
+    return Promise.resolve(ret);
   }
 
   column_paths() {

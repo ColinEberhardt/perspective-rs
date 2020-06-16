@@ -1,9 +1,9 @@
 mod cell_value;
 mod config;
 mod macros;
+mod pivot_table;
 mod row_aggregator;
 mod table;
-mod pivot_table;
 mod utils;
 mod view;
 
