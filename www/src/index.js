@@ -5,8 +5,10 @@ const view_handler = {
   get: function (target, prop, receiver) {
     console.log("view", prop);
     if (prop === "to_columns") {
+      const t0 = performance.now();
       target.to_columns().then(c => {
-        console.log(JSON.stringify(c));
+        const t1 = performance.now();
+        console.log(`Call to to_columns took ${t1 - t0} milliseconds.`);
       });
     }
     if (prop === "num_rows") {
@@ -56,43 +58,13 @@ const stuff_schema = {
   z: "string"
 };
 
-// grouped by "z, y"
-//
-// {
-//   __ROW_PATH__: [
-//     [],
-//     ["cat"],
-//     ["cat", "a"],
-//     ["cat", "b"],
-//     ["cat", "c"],
-//     ["cat", "d"],
-//     ["fish"],
-//     ["fish", "a"],
-//     ["fish", "c"]
-//   ],
-//   x: [29, 24, 6, 3, 5, 10, 5, 4, 1]
-// }
-
-
-//   __ROW_PATH__: [
-//     ["cat", "a"],
-//     ["cat", "b"],
-//     ["cat", "c"],
-//     ["cat", "d"],
-// ---
-//     ["fish", "a"],
-//     ["fish", "c"]
-//   ],
-
-const table = new Table(stuff_schema, stuff);
+const table = new Table(schema, data);
 viewer.toggleConfig();
 viewer.load(new Proxy(table, table_handler));
 
 // const worker = perspective.worker();
-// const table = worker.table(stuff_schema);
-// table.update(stuff);
-
-
+// const table = worker.table(schema);
+// table.update(data);
 
 // viewer.toggleConfig();
 // viewer.load(new Proxy(table, table_handler));

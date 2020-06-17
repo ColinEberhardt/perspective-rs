@@ -21,6 +21,15 @@ pub struct SortDescriptor {
     pub order: SortOrder,
 }
 
+impl Clone for SortDescriptor {
+    fn clone(&self) -> SortDescriptor {
+        SortDescriptor {
+            column: self.column.clone(),
+            order: self.order,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Copy, Clone)]
 #[serde(rename_all = "camelCase")]
 pub enum SortOrder {
@@ -36,4 +45,5 @@ pub enum Aggregate {
     Count,
     Low,
     High,
+    Undefined,
 }

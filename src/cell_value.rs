@@ -28,6 +28,7 @@ impl Accumulator {
             Aggregate::Count => Accumulator::Count,
             Aggregate::Low => Accumulator::Low,
             Aggregate::High => Accumulator::High,
+            Aggregate::Undefined => Accumulator::Noop,
         }
     }
 

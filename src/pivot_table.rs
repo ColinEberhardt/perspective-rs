@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 
 use super::cell_value::{Accumulator, CellValue};
-use super::config::{Config, SortDescriptor, SortOrder};
+use super::config::{SortDescriptor, SortOrder};
 use super::row_aggregator::RowAggregator;
 use super::table::Table;
 
@@ -212,6 +212,23 @@ fn aggregate_totals(
     }
 }
 
+fn sort_for_pivot(row_pivots: &Vec<String>, sort: &Vec<SortDescriptor>) -> Vec<SortDescriptor> {
+    row_pivots
+        .iter()
+        // create sort descriptors for each pivot
+        .map(|column| SortDescriptor {
+            column: column.clone(),
+            // use the sort order from the sort descriptors if present
+            order: match sort.iter().find(|x| x.column.eq(column)) {
+                Some(sort_desc) => sort_desc.order,
+                None => SortOrder::Asc,
+            },
+        })
+        // combine with the sort descriptors
+        .chain(sort.iter().cloned())
+        .collect::<Vec<SortDescriptor>>()
+}
+
 impl PivotTable {
     pub fn new(
         table: &mut Table,
@@ -221,13 +238,7 @@ impl PivotTable {
     ) -> PivotTable {
         if row_pivots.len() > 0 {
             // sort based on pivot information
-            let pivot_sort: Vec<SortDescriptor> = row_pivots
-                .iter()
-                .map(|column| SortDescriptor {
-                    column: column.clone(),
-                    order: SortOrder::Asc,
-                })
-                .collect();
+            let pivot_sort = sort_for_pivot(row_pivots, sort);
             sort_table(table, &pivot_sort);
 
             // aggregate over the 'raw' rows to create totals
