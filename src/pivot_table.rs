@@ -31,8 +31,8 @@ struct RowKey {
 
 // a format which is appropriate for serializing to the client
 #[derive(Serialize)]
-pub struct SerializablePivotTable {
-    columns: HashMap<String, Vec<CellValue>>,
+pub struct SerializablePivotTable<'a> {
+    columns: HashMap<String, Vec<&'a CellValue>>,
     row_paths: Vec<RowKey>,
 }
 
@@ -280,12 +280,12 @@ impl PivotTable {
     }
 
     pub fn to_serializable(&self, columns: &Vec<String>) -> SerializablePivotTable {
-        let mut map: HashMap<String, Vec<CellValue>> = HashMap::new();
+        let mut map: HashMap<String, Vec<&CellValue>> = HashMap::new();
         for (column_index, col) in self.columns.iter().enumerate() {
             if columns.iter().any(|i| i.eq(col)) {
-                let mut col_data: Vec<CellValue> = Vec::new();
+                let mut col_data: Vec<&CellValue> = Vec::new();
                 for row_index in 0..self.rows.len() {
-                    col_data.push(self.rows[row_index].values[column_index].clone());
+                    col_data.push(&self.rows[row_index].values[column_index]);
                 }
                 map.insert(col.to_string(), col_data);
             }

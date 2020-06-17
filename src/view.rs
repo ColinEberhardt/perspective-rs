@@ -2,12 +2,12 @@ use wasm_bindgen::prelude::*;
 
 use super::cell_value::Accumulator;
 use super::config::Config;
-use super::pivot_table::{PivotTable, SerializablePivotTable};
+use super::pivot_table::PivotTable;
 use super::table::Table;
 
 #[wasm_bindgen]
 pub struct View {
-    columns: SerializablePivotTable,
+    pivot_table: PivotTable,
     config: Config,
 
     pub num_rows: usize,
@@ -29,10 +29,10 @@ impl View {
             }
         }
 
-        let ag_table = PivotTable::new(table, &config.row_pivots, &config.sort, &accumulators);
+        let pivot_table = PivotTable::new(table, &config.row_pivots, &config.sort, &accumulators);
 
         return View {
-            columns: ag_table.to_serializable(&config.columns),
+            pivot_table,
             num_rows: table.size(),
             num_columns: table.columns.len(),
             config,
@@ -40,7 +40,7 @@ impl View {
     }
 
     pub fn to_columns(&self) -> JsValue {
-        JsValue::from_serde(&self.columns).unwrap()
+        JsValue::from_serde(&self.pivot_table.to_serializable(&self.config.columns)).unwrap()
     }
 
     pub fn columns(&self) -> String {
