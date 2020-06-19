@@ -1,3 +1,4 @@
+mod accumulator;
 mod cell_value;
 mod config;
 mod macros;

@@ -1,8 +1,11 @@
+use serde::de::{self, Deserialize, Deserializer, Visitor};
 use serde::ser::{Serialize, Serializer};
 use serde_json::Value;
 use std::cmp::{max, min, Eq, Ordering};
+use std::fmt;
 
-use super::config::Aggregate;
+use super::config::Operation;
+use super::accumulator::Accumulator;
 
 #[derive(Eq, PartialEq, Clone)]
 pub enum CellValue {
@@ -10,37 +13,6 @@ pub enum CellValue {
     Str(String),
     Bool(bool),
     Null,
-}
-
-#[derive(Clone, Copy)]
-pub enum Accumulator {
-    Sum,
-    Noop,
-    Count,
-    Low,
-    High,
-}
-
-impl Accumulator {
-    pub fn from_aggregate(agg: &Aggregate) -> Accumulator {
-        match agg {
-            Aggregate::Sum => Accumulator::Sum,
-            Aggregate::Count => Accumulator::Count,
-            Aggregate::Low => Accumulator::Low,
-            Aggregate::High => Accumulator::High,
-            Aggregate::Undefined => Accumulator::Noop,
-        }
-    }
-
-    pub fn total_accumulator(&self) -> Accumulator {
-        match self {
-            Accumulator::Sum => Accumulator::Sum,
-            Accumulator::Count => Accumulator::Sum,
-            Accumulator::Low => Accumulator::Low,
-            Accumulator::High => Accumulator::High,
-            Accumulator::Noop => Accumulator::Noop,
-        }
-    }
 }
 
 impl CellValue {
@@ -51,6 +23,17 @@ impl CellValue {
             Value::Number(value) => Integer(value.as_i64().unwrap()),
             Value::String(value) => Str(value.clone()),
             _ => Null,
+        }
+    }
+
+    pub fn matches(&self, operation: &Operation, value: &CellValue) -> bool {
+        use CellValue::*;
+        use Operation::*;
+        match (operation, value, self) {
+            (EqEq, Str(a), Str(b)) => a.eq(b),
+            (EqEq, Integer(a), Integer(b)) => a == b,
+            (EqEq, Bool(a), Bool(b)) => a == b,
+            _ => false,
         }
     }
 
@@ -121,5 +104,87 @@ impl Serialize for CellValue {
             CellValue::Bool(value) => serializer.serialize_bool(*value),
             CellValue::Null => serializer.serialize_none(),
         }
+    }
+}
+
+pub struct CellValueVisitor;
+
+impl<'de> Visitor<'de> for CellValueVisitor {
+    type Value = CellValue;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("not what we wanted")
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        Ok(CellValue::Str(value.to_string()))
+    }
+
+    fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        Ok(CellValue::Integer(v))
+    }
+
+    fn visit_i32<E>(self, v: i32) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        self.visit_i64(v as i64)
+    }
+
+    fn visit_i16<E>(self, v: i16) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        self.visit_i64(v as i64)
+    }
+
+    fn visit_i8<E>(self, v: i8) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        self.visit_i64(v as i64)
+    }
+
+    fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        self.visit_i64(v as i64)
+    }
+
+    fn visit_u32<E>(self, v: u32) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        self.visit_i64(v as i64)
+    }
+
+    fn visit_u16<E>(self, v: u16) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        self.visit_i64(v as i64)
+    }
+
+    fn visit_u8<E>(self, v: u8) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        self.visit_i64(v as i64)
+    }
+}
+
+impl<'de> Deserialize<'de> for CellValue {
+    fn deserialize<D>(deserializer: D) -> Result<CellValue, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(CellValueVisitor)
     }
 }

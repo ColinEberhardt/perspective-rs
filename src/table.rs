@@ -1,4 +1,5 @@
 use serde_json::Value;
+use std::iter::Iterator;
 use wasm_bindgen::prelude::*;
 
 use super::cell_value::CellValue;
@@ -9,6 +10,7 @@ use super::view::View;
 // and a two-dimensional array of data
 #[wasm_bindgen]
 pub struct Table {
+    // TODO - explroe implementing IntoIterator for this type
     #[wasm_bindgen(skip)]
     pub data: Vec<Vec<CellValue>>,
     #[wasm_bindgen(skip)]

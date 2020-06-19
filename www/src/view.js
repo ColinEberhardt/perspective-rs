@@ -36,6 +36,18 @@ export default class View {
     return Promise.resolve(ret);
   }
 
+  to_json() {
+    const json = this._adaptee.to_json();
+    let res = [];
+    json.rows.forEach((row, index) => {
+      res.push({
+        ...row,
+        __ROW_PATH__: json.row_paths[index].values
+      });
+    });
+    return Promise.resolve(res);
+  }
+
   column_paths() {
     // TODO - sort our column ordering - we sort here to push __ROW_PATH__ to the front
     const paths = this._adaptee.columns().split(",");

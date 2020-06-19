@@ -32,7 +32,24 @@ export default class Table {
   }
 
   view(config) {
-    console.log(config);
+    config = {
+      columns: [],
+      aggregates: [],
+      column_pivots: [],
+      computed_columns: [],
+      filter: config.filter
+        ? config.filter
+            .map(filter => {
+              if (filter[1] === "==") {
+                filter[1] = "eqeq";
+              }
+            })
+        : [],
+      row_pivots: [],
+      sort: [],
+      ...config
+    };
+    config.filter = config.filter.filter(f => f[2] !== null)
     const view = this._adaptee.to_view(JSON.stringify(config));
     return new View(config, view, this);
   }
@@ -43,5 +60,9 @@ export default class Table {
 
   size() {
     return this._adaptee.size();
+  }
+
+  is_valid_filter() {
+    return Promise.resolve(true);
   }
 }

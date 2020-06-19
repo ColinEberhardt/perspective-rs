@@ -1,9 +1,12 @@
 use std::collections::HashMap;
 
+use super::cell_value::CellValue;
+
 #[derive(Serialize, Deserialize)]
 pub struct Config {
     pub sort: Vec<SortDescriptor>,
     pub columns: Vec<String>,
+    pub filter: Vec<FilterDescriptor>,
     pub aggregates: HashMap<String, Aggregate>,
     pub row_pivots: Vec<String>,
 }
@@ -21,6 +24,13 @@ pub struct SortDescriptor {
     pub order: SortOrder,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct FilterDescriptor {
+    pub column: String,
+    pub operation: Operation,
+    pub value: CellValue,
+}
+
 impl Clone for SortDescriptor {
     fn clone(&self) -> SortDescriptor {
         SortDescriptor {
@@ -36,6 +46,12 @@ pub enum SortOrder {
     Desc,
     Asc,
     None,
+}
+
+#[derive(Serialize, Deserialize, Copy, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum Operation {
+    EqEq,
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone)]

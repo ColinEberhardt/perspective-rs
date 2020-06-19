@@ -3,7 +3,8 @@ use std::cmp::Eq;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
-use super::cell_value::{Accumulator, CellValue};
+use super::accumulator::Accumulator;
+use super::cell_value::CellValue;
 use super::config::{SortDescriptor, SortOrder};
 use super::row_aggregator::RowAggregator;
 use super::table::Table;
@@ -31,8 +32,14 @@ struct RowKey {
 
 // a format which is appropriate for serializing to the client
 #[derive(Serialize)]
-pub struct SerializablePivotTable<'a> {
+pub struct SerializableColumnarPivotTable<'a> {
     columns: HashMap<String, Vec<&'a CellValue>>,
+    row_paths: Vec<RowKey>,
+}
+
+#[derive(Serialize)]
+pub struct SerializablePivotTable<'a> {
+    rows: Vec<HashMap<String, &'a CellValue>>,
     row_paths: Vec<RowKey>,
 }
 
@@ -279,7 +286,23 @@ impl PivotTable {
         }
     }
 
-    pub fn to_serializable(&self, columns: &Vec<String>) -> SerializablePivotTable {
+    pub fn to_serializable_rows(&self) -> SerializablePivotTable {
+        let rows: Vec<HashMap<String, &CellValue>> = self
+            .rows
+            .iter()
+            .map(|row| {
+                let mut map: HashMap<String, &CellValue> = HashMap::new();
+                for (column_index, col) in self.columns.iter().enumerate() {
+                    map.insert(col.to_string(), &row.values[column_index]);
+                }
+                map
+            })
+            .collect();
+        let row_paths = self.rows.iter().map(|s| s.key.clone()).collect();
+        SerializablePivotTable { rows, row_paths }
+    }
+
+    pub fn to_serializable_columns(&self, columns: &Vec<String>) -> SerializableColumnarPivotTable {
         let mut map: HashMap<String, Vec<&CellValue>> = HashMap::new();
         for (column_index, col) in self.columns.iter().enumerate() {
             if columns.iter().any(|i| i.eq(col)) {
@@ -293,7 +316,7 @@ impl PivotTable {
 
         let row_paths = self.rows.iter().map(|s| s.key.clone()).collect();
 
-        SerializablePivotTable {
+        SerializableColumnarPivotTable {
             columns: map,
             row_paths,
         }

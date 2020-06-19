@@ -1,4 +1,4 @@
-#![macro_use]
+#![macro_escape]
 
 #[macro_export]
 macro_rules! log {

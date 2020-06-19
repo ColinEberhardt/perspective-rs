@@ -1,4 +1,5 @@
-use super::cell_value::{Accumulator, CellValue};
+use super::accumulator::Accumulator;
+use super::cell_value::CellValue;
 
 pub struct RowAggregator {
     row: Vec<CellAccumulator>,

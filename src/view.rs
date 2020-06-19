@@ -1,7 +1,7 @@
 use wasm_bindgen::prelude::*;
 
-use super::cell_value::Accumulator;
-use super::config::Config;
+use super::accumulator::Accumulator;
+use super::config::{Config, FilterDescriptor};
 use super::pivot_table::PivotTable;
 use super::table::Table;
 
@@ -17,8 +17,31 @@ pub struct View {
 #[wasm_bindgen]
 impl View {
     #[wasm_bindgen(skip)]
-    pub fn new(table: &mut Table, config: &str) -> View {
+    pub fn new(table: &Table, config: &str) -> View {
         let config = Config::new(config.to_string());
+
+        // create tuples with column indices alongside filters
+        let keyed_filters = config
+            .filter
+            .iter()
+            .map(|s| table.index_for_column(&s.column))
+            .zip(config.filter.iter())
+            .collect::<Vec<(usize, &FilterDescriptor)>>();
+
+        let mut filtered_table = Table {
+            data: table
+                .data
+                .iter()
+                .filter(|row| {
+                    keyed_filters.iter().all(|(col_index, filter)| {
+                        row[*col_index].matches(&filter.operation, &filter.value)
+                    })
+                })
+                .cloned()
+                .collect(),
+            // TODO - do we need to keep copying these values
+            columns: table.columns.iter().cloned().collect(),
+        };
 
         // determine how to accumulate each column
         let mut accumulators: Vec<Accumulator> = vec![];
@@ -29,7 +52,12 @@ impl View {
             }
         }
 
-        let pivot_table = PivotTable::new(table, &config.row_pivots, &config.sort, &accumulators);
+        let pivot_table = PivotTable::new(
+            &mut filtered_table,
+            &config.row_pivots,
+            &config.sort,
+            &accumulators,
+        );
 
         return View {
             pivot_table,
@@ -40,7 +68,16 @@ impl View {
     }
 
     pub fn to_columns(&self) -> JsValue {
-        JsValue::from_serde(&self.pivot_table.to_serializable(&self.config.columns)).unwrap()
+        JsValue::from_serde(
+            &self
+                .pivot_table
+                .to_serializable_columns(&self.config.columns),
+        )
+        .unwrap()
+    }
+
+    pub fn to_json(&self) -> JsValue {
+        JsValue::from_serde(&self.pivot_table.to_serializable_rows()).unwrap()
     }
 
     pub fn columns(&self) -> String {
