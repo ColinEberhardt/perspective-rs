@@ -27,8 +27,12 @@ export default class View {
     return this._table.schema();
   }
 
-  to_columns() {
-    const cols = this._adaptee.to_columns();
+  to_columns(options) {
+    options.end_col = Math.ceil(options.end_col);
+    options.end_row = Math.ceil(options.end_row);
+    options.start_col = Math.ceil(options.start_col);
+    options.start_row = Math.ceil(options.start_row);
+    const cols = this._adaptee.to_columns(JSON.stringify(options));
     const ret = {
       ...cols.columns,
       __ROW_PATH__: cols.row_paths.map(s => s.values)

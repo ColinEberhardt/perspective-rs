@@ -14,6 +14,21 @@ pub struct View {
     pub num_columns: usize,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct ViewOptions {
+    pub end_col: usize,
+    pub end_row: usize,
+    pub start_col: usize,
+    pub start_row: usize,
+}
+
+impl ViewOptions {
+    pub fn new(options_string: String) -> ViewOptions {
+        let options: ViewOptions = serde_json::from_str(options_string.as_str()).unwrap();
+        return options;
+    }
+}
+
 #[wasm_bindgen]
 impl View {
     #[wasm_bindgen(skip)]
@@ -67,11 +82,12 @@ impl View {
         };
     }
 
-    pub fn to_columns(&self) -> JsValue {
+    pub fn to_columns(&self, options: &str) -> JsValue {
+        let options = ViewOptions::new(options.to_string());
         JsValue::from_serde(
             &self
                 .pivot_table
-                .to_serializable_columns(&self.config.columns),
+                .to_serializable_columns(&self.config.columns, &options),
         )
         .unwrap()
     }

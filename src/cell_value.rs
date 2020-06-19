@@ -4,8 +4,8 @@ use serde_json::Value;
 use std::cmp::{max, min, Eq, Ordering};
 use std::fmt;
 
-use super::config::Operation;
 use super::accumulator::Accumulator;
+use super::config::Operation;
 
 #[derive(Eq, PartialEq, Clone)]
 pub enum CellValue {

@@ -8,6 +8,7 @@ use super::cell_value::CellValue;
 use super::config::{SortDescriptor, SortOrder};
 use super::row_aggregator::RowAggregator;
 use super::table::Table;
+use super::view::ViewOptions;
 
 pub struct PivotTable {
     rows: Vec<PivotTableRow>,
@@ -302,19 +303,29 @@ impl PivotTable {
         SerializablePivotTable { rows, row_paths }
     }
 
-    pub fn to_serializable_columns(&self, columns: &Vec<String>) -> SerializableColumnarPivotTable {
+    pub fn to_serializable_columns(
+        &self,
+        columns: &Vec<String>,
+        options: &ViewOptions,
+    ) -> SerializableColumnarPivotTable {
         let mut map: HashMap<String, Vec<&CellValue>> = HashMap::new();
         for (column_index, col) in self.columns.iter().enumerate() {
             if columns.iter().any(|i| i.eq(col)) {
                 let mut col_data: Vec<&CellValue> = Vec::new();
-                for row_index in 0..self.rows.len() {
+                for row_index in options.start_row..options.end_row {
                     col_data.push(&self.rows[row_index].values[column_index]);
                 }
                 map.insert(col.to_string(), col_data);
             }
         }
 
-        let row_paths = self.rows.iter().map(|s| s.key.clone()).collect();
+        let row_paths = self
+            .rows
+            .iter()
+            .skip(options.start_row)
+            .take(options.end_row - options.start_row)
+            .map(|s| s.key.clone())
+            .collect();
 
         SerializableColumnarPivotTable {
             columns: map,

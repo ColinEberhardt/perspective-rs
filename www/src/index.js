@@ -6,10 +6,13 @@ const view_handler = {
     // console.log("view", prop);
     if (prop === "to_columns") {
       const t0 = performance.now();
-      target.to_columns().then(c => {
-        const t1 = performance.now();
-        console.log(`Call to to_columns took ${t1 - t0} milliseconds.`);
-      });
+      return function (config) {
+        return target.to_columns(config).then(c => {
+          const t1 = performance.now();
+          console.log(`Call to to_columns took ${t1 - t0} milliseconds.`);
+          return c;
+        });
+      };
     }
     return Reflect.get(...arguments);
   }
@@ -20,7 +23,6 @@ const table_handler = {
     // console.log("table", prop);
     if (prop === "view") {
       return function (...args) {
-        console.log("view", args[0]);
         const view = target.view(...args);
         const view_proxy = new Proxy(view, view_handler);
         return view_proxy;
@@ -49,13 +51,13 @@ const stuff_schema = {
   z: "string"
 };
 
-const table = new Table(schema, data);
-viewer.toggleConfig();
-viewer.load(new Proxy(table, table_handler));
-
-// const worker = perspective.worker();
-// const table = worker.table(schema);
-// table.update(data);
-
+// const table = new Table(schema, data);
 // viewer.toggleConfig();
 // viewer.load(new Proxy(table, table_handler));
+
+const worker = perspective.worker();
+const table = worker.table(schema);
+table.update(data);
+
+viewer.toggleConfig();
+viewer.load(new Proxy(table, table_handler));
