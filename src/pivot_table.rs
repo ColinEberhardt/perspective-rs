@@ -308,16 +308,22 @@ impl PivotTable {
         columns: &Vec<String>,
         options: &ViewOptions,
     ) -> SerializableColumnarPivotTable {
-        let mut map: HashMap<String, Vec<&CellValue>> = HashMap::new();
-        for (column_index, col) in self.columns.iter().enumerate() {
-            if columns.iter().any(|i| i.eq(col)) {
-                let mut col_data: Vec<&CellValue> = Vec::new();
-                for row_index in options.start_row..options.end_row {
-                    col_data.push(&self.rows[row_index].values[column_index]);
-                }
-                map.insert(col.to_string(), col_data);
-            }
-        }
+        let columns: HashMap<String, Vec<&CellValue>> = self
+            .columns
+            .iter()
+            .filter(|col| columns.iter().any(|i| i.eq(*col)))
+            .enumerate()
+            .map(|(idx, col)| {
+                let col_data: Vec<&CellValue> = self
+                    .rows
+                    .iter()
+                    .skip(options.start_row)
+                    .take(options.end_row - options.start_row)
+                    .map(|r| &r.values[idx])
+                    .collect();
+                (col.clone(), col_data)
+            })
+            .collect();
 
         let row_paths = self
             .rows
@@ -327,9 +333,6 @@ impl PivotTable {
             .map(|s| s.key.clone())
             .collect();
 
-        SerializableColumnarPivotTable {
-            columns: map,
-            row_paths,
-        }
+        SerializableColumnarPivotTable { columns, row_paths }
     }
 }
