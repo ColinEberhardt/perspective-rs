@@ -12,6 +12,8 @@ use super::view::ViewOptions;
 
 pub struct PivotTable {
     rows: Vec<PivotTableRow>,
+    // TODO - (biggish refactor) we shouldn't need this, instead the rows above should only contain the columns
+    // requested by the view config.
     columns: Vec<String>,
 }
 

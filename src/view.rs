@@ -58,14 +58,14 @@ impl View {
             columns: table.columns.iter().cloned().collect(),
         };
 
-        // determine how to accumulate each column
-        let mut accumulators: Vec<Accumulator> = vec![];
-        for (_, col) in table.columns.iter().enumerate() {
-            match config.aggregates.get(col) {
-                Some(agg) => accumulators.push(Accumulator::from_aggregate(agg)),
-                None => accumulators.push(Accumulator::Noop),
-            }
-        }
+        let accumulators: Vec<Accumulator> = table
+            .columns
+            .iter()
+            .map(|col| match config.aggregates.get(col) {
+                Some(agg) => Accumulator::from_aggregate(agg),
+                None => Accumulator::Noop,
+            })
+            .collect();
 
         let pivot_table = PivotTable::new(
             &mut filtered_table,
